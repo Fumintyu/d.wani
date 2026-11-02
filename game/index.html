@@ -48,7 +48,8 @@
   .pause:active{background:rgba(232,118,45,.7)}
   #overlay .big{font-size:24px;color:#ffd35a;text-shadow:3px 3px 0 var(--orange)}
   #overlay p{margin:0;font-size:13px;line-height:1.7}
-  .pad{width:100%;display:flex;justify-content:space-between;align-items:center;padding:0 10px 4px}
+  .pad{width:100%;display:grid;grid-template-columns:auto 1fr auto;align-items:center;padding:0 10px 4px}
+  .pad .ctl{justify-self:center;align-self:start}
   .dpad{display:grid;grid-template-columns:repeat(3,40px);grid-template-rows:repeat(3,40px);gap:2px}
   .dpad button,.act{font-family:inherit;border:3px solid var(--ink);background:var(--sand);color:var(--ink);font-size:22px;border-radius:8px;box-shadow:0 4px 0 var(--ink);touch-action:none}
   .dpad button:active,.dpad button.on,.act:active,.act.on{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
@@ -61,7 +62,7 @@
   .knob{position:absolute;left:50%;top:50%;width:54px;height:54px;margin:-27px 0 0 -27px;border-radius:50%;background:var(--sand);border:3px solid var(--ink);box-shadow:0 4px 0 var(--ink);transition:transform .1s;pointer-events:none}
   .stick.on .knob{transition:none;background:#ffe9a8}
   body.mode-stick .dpad{display:none} body.mode-dpad .stick{display:none}
-  .mid{display:flex;flex-direction:column;gap:8px;align-items:center}
+  .mid{display:flex;flex-direction:column;gap:8px;align-items:center;align-self:start}
   #ctlmode{font-size:12px;min-width:72px}
   .help{display:none}
   @media (hover:hover){.help{display:block;font-size:12px;opacity:.7;margin:0}}
@@ -78,6 +79,7 @@
     <div id="overlay"></div>
   </div>
   <div class="pad">
+    <div class="mid"><button class="snd" id="snd" aria-label="音の切り替え">♪ON</button><button class="snd" id="ctlmode">スティック</button></div>
     <div class="ctl">
     <div class="dpad">
       <button class="up" data-d="up" aria-label="上">▲</button>
@@ -87,7 +89,6 @@
     </div>
     <div class="stick" id="stick" aria-label="スティック"><div class="knob" id="knob"></div></div>
     </div>
-    <div class="mid"><button class="snd" id="snd" aria-label="音の切り替え">♪ON</button><button class="snd" id="ctlmode">スティック</button></div>
     <button class="act" id="act">たたく</button>
   </div>
   <p class="help">PC：矢印キーで移動、スペースでたたく、Pで一時停止</p>
