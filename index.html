@@ -84,6 +84,40 @@
         }
         /* ===== ここまで ===== */
 
+        /* ===== ゲーム「単位ほりほり」バナー ===== */
+        .game-banner {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            text-decoration: none;
+            color: #f6e7c8;
+            background: #1c2048;
+            border: 3px solid #0f1024;
+            outline: 3px solid #e8762d;
+            border-radius: 10px;
+            padding: 18px 20px;
+            margin: 0 3px 40px;
+            transition: transform .15s ease;
+        }
+        .game-banner:hover { transform: translateY(-2px); }
+        .game-banner .gb-icon {
+            flex: 0 0 64px; height: 64px;
+            image-rendering: pixelated;
+            background: #141226; border: 2px solid #0f1024; border-radius: 6px;
+        }
+        .game-banner .gb-label { font-size: 12px; font-weight: bold; color: #ffd35a; letter-spacing: .1em; }
+        .game-banner .gb-title { font-size: 24px; font-weight: bold; margin: 2px 0 4px; text-shadow: 2px 2px 0 #e8762d; }
+        .game-banner .gb-info { font-size: 13px; line-height: 1.5; }
+        .game-banner .gb-more {
+            display: inline-block; margin-top: 8px; font-size: 13px; font-weight: bold;
+            background: #e8762d; color: #f6e7c8; border-radius: 999px; padding: 4px 16px;
+        }
+        @media (max-width: 480px) {
+            .game-banner { gap: 12px; padding: 14px; }
+            .game-banner .gb-icon { flex-basis: 48px; height: 48px; }
+            .game-banner .gb-title { font-size: 20px; }
+        }
+
         /* ヒーローエリア（導入部） */
         .hero {
             text-align: center;
@@ -217,6 +251,23 @@
             </a>
             <!-- ===== ここまで ===== -->
 
+            <!-- ===== ゲーム「単位ほりほり」 ===== -->
+            <a href="game/" class="game-banner">
+                <svg class="gb-icon" viewBox="0 0 8 8" aria-hidden="true" shape-rendering="crispEdges">
+                    <rect x="2" y="0" width="4" height="1" fill="#f2c230"/><rect x="1" y="1" width="6" height="1" fill="#f2c230"/><rect x="3" y="1" width="1" height="1" fill="#fff3b0"/>
+                    <rect x="1" y="2" width="6" height="1" fill="#7a5236"/><rect x="0" y="3" width="8" height="2" fill="#7a5236"/><rect x="5" y="3" width="1" height="1" fill="#111"/>
+                    <rect x="6" y="4" width="2" height="1" fill="#f08aa0"/><rect x="1" y="5" width="6" height="2" fill="#7a5236"/><rect x="2" y="5" width="3" height="2" fill="#d9b48f"/>
+                    <rect x="0" y="7" width="1" height="1" fill="#f2e2c8"/><rect x="2" y="7" width="1" height="1" fill="#f2e2c8"/><rect x="5" y="7" width="1" height="1" fill="#f2e2c8"/><rect x="7" y="7" width="1" height="1" fill="#f2e2c8"/>
+                </svg>
+                <div>
+                    <div class="gb-label">ミニゲーム</div>
+                    <div class="gb-title">単位ほりほり</div>
+                    <div class="gb-info">土を掘って単位を集めて、124単位で卒業！<br>スマホのブラウザですぐ遊べます（登録・ログイン不要）</div>
+                    <span class="gb-more">あそぶ &raquo;</span>
+                </div>
+            </a>
+            <!-- ===== ここまで ===== -->
+
             <div class="hero">
                 <h1>ワニ博士同好会へようこそ</h1>
                 <p>ワニ博士を一緒に愛でてくれる人を募集しています！！</p>
@@ -260,6 +311,11 @@
             <section class="news-section">
                 <h2>最新のニュース</h2>
                 <ul class="news-list">
+                    <li>
+                        <span class="news-date">2026.11.2</span>
+                        <a href="game/" class="news-link">ミニゲーム「単位ほりほり」を公開しました</a>
+                        <span class="news-new">NEW</span>
+                    </li>
                     <li>
                         <span class="news-date">2026.10.22</span>
                         <a href="machikane2026.html" class="news-link">まちかね祭2026に出展します（11/1〜3・共C201）</a>
