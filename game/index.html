@@ -50,7 +50,7 @@
   #overlay p{margin:0;font-size:13px;line-height:1.7}
   .pad{width:100%;display:grid;grid-template-columns:auto 1fr auto;align-items:center;padding:0 10px 4px}
   .pad .ctl{justify-self:center;align-self:start}
-  .dpad{display:grid;grid-template-columns:repeat(3,40px);grid-template-rows:repeat(3,40px);gap:2px}
+  .dpad{display:grid;grid-template-columns:repeat(3,52px);grid-template-rows:repeat(3,52px);gap:3px}
   .dpad button,.act{font-family:inherit;border:3px solid var(--ink);background:var(--sand);color:var(--ink);font-size:22px;border-radius:8px;box-shadow:0 4px 0 var(--ink);touch-action:none}
   .dpad button:active,.dpad button.on,.act:active,.act.on{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
   .up{grid-column:2;grid-row:1}.left{grid-column:1;grid-row:2}.right{grid-column:3;grid-row:2}.down{grid-column:2;grid-row:3}
@@ -345,6 +345,7 @@ function applyCtl(){
   const b=document.getElementById('ctlmode'); b.textContent=ctlMode==='stick'?'スティック':'十字キー';
   b.setAttribute('aria-label','操作方法：'+b.textContent+'（押すと切り替え）');
   held=[]; stickDir=null; document.querySelectorAll('.dpad button.on').forEach(x=>x.classList.remove('on'));
+  resize();
 }
 document.getElementById('ctlmode').addEventListener('click',()=>{
   ctlMode=ctlMode==='stick'?'dpad':'stick'; try{localStorage.setItem('tanihori-ctl',ctlMode);}catch(e){} applyCtl();
