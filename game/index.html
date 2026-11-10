@@ -728,12 +728,6 @@ function draw(){
     ctx.save();ctx.strokeStyle="#ffd35a";ctx.globalAlpha=1-k;ctx.lineWidth=P*1.5;
     ctx.setLineDash([P*2,P]);ctx.beginPath();ctx.arc(cx,cy,T*(.5+k*(atkRange()-.5)),k*6.28,k*6.28+6.28);ctx.stroke();ctx.restore();
   }
-  if(state!=='title'){
-    const s=Math.max(11,Math.floor(T*.34));
-    ctx.font=`${s}px DotGothic16,monospace`;ctx.textAlign="left";ctx.textBaseline="top";
-    ctx.lineWidth=3;ctx.lineJoin="round";ctx.strokeStyle="#0f1024";ctx.strokeText('TIME '+fmtTime(playTime),4,4);
-    ctx.fillStyle="#f6e7c8";ctx.fillText('TIME '+fmtTime(playTime),4,4);
-  }
   for(const f of fx){
     const d=f.d||.9, size=Math.floor(T*(f.big?.5:.34));
     ctx.globalAlpha=Math.max(0,1-f.t/d);
