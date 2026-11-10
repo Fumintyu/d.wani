@@ -462,12 +462,19 @@ const rankStore={
     }
     if(v.src==='fb')this.cache[m]={at:Date.now(),v}; return v;
   },
-  async add(m,rec){ // 登録。成功したら true
+  // 登録。同じ名前の記録があれば、速いときだけ上書きする
+  // 戻り値: 'new'（初登録）/'updated'（更新）/'kept'（前の記録の方が速い）/false（失敗）
+  async add(m,rec){
     try{
       const {F,db}=await withTimeout(fbInit(),8000);
-      const ref=await withTimeout(F.addDoc(F.collection(db,'scores_'+m),{name:rec.name,time:rec.time,score:rec.score}),10000);
-      rec.id=ref.id;
-      delete this.cache[m]; return true;
+      const ref=F.doc(db,'scores_'+m,rec.name);
+      rec.id=rec.name;
+      const old=await withTimeout(F.getDoc(ref),10000);
+      if(old.exists()&&old.data().time<=rec.time){
+        rec.prev=rec.time; rec.time=old.data().time; rec.score=old.data().score; return 'kept';
+      }
+      await withTimeout(F.setDoc(ref,{name:rec.name,time:rec.time,score:rec.score}),10000);
+      delete this.cache[m]; return old.exists()?'updated':'new';
     }catch(e){
       console.warn('登録に失敗',e); return false;
     }
@@ -492,25 +499,35 @@ async function showRanking(m,mineRec){
   show('ランキング',`${tabs}
   <p class="sub">${MODES[m].name}モード・卒業までの速さ</p>
   ${mineRec&&v.myRank?`<p class="best"><span class="newbest">あなたは ${v.myRank}位！</span></p>`:mineRec&&v.rankOver?`<p class="best">あなたは 51位以下</p>`:''}
+  ${mineRec&&lastRun&&lastRun.note?`<p class="hint">${esc(lastRun.note)}</p>`:''}
   <table class="rank">${h||'<tr><td colspan="3">まだ記録がありません</td></tr>'}</table>
   <p class="best">卒業した人 ${v.count}人${v.capped?'以上':''}／平均タイム ${v.count?fmtTime1(v.avg):'-'}${v.capped?'（上位50人）':''}</p>
   <div class="btns"><button class="btn" data-act="restart">${lastRun?'再スタート':'あそぶ'}</button><button class="btn sub" data-act="menu">モード選択</button></div>`);
 }
+// 名前を記録のIDとして使うため、IDに使えない文字を置き換える
+function cleanName(v){
+  let n=(v||'').replace(/\s+/g,' ').trim().slice(0,10).replace(/\//g,'／');
+  if(/^\.+$/.test(n))n=n.replace(/\./g,'．');
+  if(/^__/.test(n))n='＿'+n.slice(1);
+  return n;
+}
 async function submitName(){
   if(!lastRun||lastRun.sent||lastRun.busy)return;
   const inp=document.getElementById('pname'), btn=ov.querySelector('[data-act=submit]'), msg=document.getElementById('pmsg');
-  const name=(inp.value||'').replace(/\s+/g,' ').trim().slice(0,10)||'ななし';
+  const name=cleanName(inp.value);
+  if(!name){if(msg)msg.textContent='名前を入れてください。';return;}
   try{localStorage.setItem('tanihori-name',name);}catch(e){}
   lastRun.busy=true; btn.disabled=true; btn.textContent='送信中…';
   const rec={name,time:lastRun.time,score:Math.max(0,Math.round(lastRun.score))};
-  const ok=await rankStore.add(lastRun.mode,rec);
+  const res=await rankStore.add(lastRun.mode,rec);
   lastRun.busy=false;
-  if(!ok){
+  if(!res){
     if(btn.isConnected){btn.disabled=false;btn.textContent='登録';}
     if(msg&&msg.isConnected)msg.textContent='登録できませんでした。通信状態を確認して、もう一度押してください。';
     return;
   }
-  lastRun.sent=true; lastRun.name=name; lastRun.id=rec.id;
+  lastRun.sent=true; lastRun.name=name; lastRun.id=rec.id; lastRun.time=rec.time; lastRun.score=rec.score;
+  lastRun.note=res==='updated'?'自己ベスト更新！記録を上書きしました':res==='kept'?`今回は ${fmtTime1(rec.prev)}。前の記録 ${fmtTime1(rec.time)} のままです`:'';
   if(state==='result')showRanking(lastRun.mode,rec);
 }
 function endGame(kind){ // 'grad' 卒業 / 'over' 留年で終了 / 'quit' 途中でやめた
@@ -532,7 +549,7 @@ function endGame(kind){ // 'grad' 卒業 / 'over' 留年で終了 / 'quit' 途�
   show(title,`<p class="sub">スコア</p><div class="score">${score}</div>
   <p class="best">${isBest?'<span class="newbest">ベスト更新！</span>':`${MODES[mode].name}のベスト ${Math.max(best,score)}`}</p>
   <table>${rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('')}</table>
-  ${kind==='grad'?`<p class="sub">名前を入れてランキングに登録（10文字まで）</p><div class="btns"><input id="pname" maxlength="10" placeholder="なまえ" value="${esc(savedName)}" autocomplete="off"><button class="btn" data-act="submit">登録</button></div><p class="hint" id="pmsg"></p>`:`<p class="hint">卒業するとランキングに登録できます</p>`}
+  ${kind==='grad'?`<p class="sub">名前を入れてランキングに登録（10文字まで）<br>同じ名前は、速いときだけ記録を上書き</p><div class="btns"><input id="pname" maxlength="10" placeholder="なまえ" value="${esc(savedName)}" autocomplete="off"><button class="btn" data-act="submit">登録</button></div><p class="hint" id="pmsg"></p>`:`<p class="hint">卒業するとランキングに登録できます</p>`}
   <div class="btns"><button class="btn${kind==='grad'?' sub':''}" data-act="restart">再スタート</button><button class="btn sub" data-act="rank">ランキング</button><button class="btn sub" data-act="menu">モード選択</button></div>`);
 }
 const pauseBtn=document.getElementById('pause');
