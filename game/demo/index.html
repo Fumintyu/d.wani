@@ -441,23 +441,31 @@ const rankStore={
     try{
       const {F,db}=await withTimeout(fbInit(),8000);
       const col=F.collection(db,'scores_'+m);
-      const [qs,st]=await withTimeout(Promise.all([
-        F.getDocs(F.query(col,F.orderBy('time'),F.limit(10))),
-        F.getDoc(F.doc(db,'stats',m)),
-      ]),10000);
-      const d=st.exists()?st.data():{count:0,sum:0};
-      const top=qs.docs.map(x=>({id:x.id,...x.data()}));
-      let myRank=null, rankOver=false;
-      if(mine){
-        const i=top.findIndex(r=>r.id===mine.id);
-        if(i>=0)myRank=i+1;
-        else if(top.length<10)myRank=top.filter(r=>r.time<mine.time).length+1;
-        else try{ // 11位以下：自分より速い記録を50件まで数える
-          const q2=await withTimeout(F.getDocs(F.query(col,F.where('time','<',mine.time),F.orderBy('time'),F.limit(50))),10000);
-          if(q2.docs.length<50)myRank=q2.docs.length+1; else rankOver=true;
-        }catch(e){console.warn('順位の取得に失敗',e);}
+      // 人数と平均は記録そのものから数える（記録を消せば自動で合う）
+      let top,count,avg,capped=false,myRank=null,rankOver=false;
+      if(this.agg!==false){
+        try{
+          const [qs,ag,cn]=await withTimeout(Promise.all([
+            F.getDocs(F.query(col,F.orderBy('time'),F.limit(10))),
+            F.getAggregateFromServer(F.query(col),{n:F.count(),avg:F.average('time')}),
+            mine?F.getCountFromServer(F.query(col,F.where('time','<',mine.time))):Promise.resolve(null),
+          ]),10000);
+          top=qs.docs.map(x=>({id:x.id,...x.data()}));
+          count=ag.data().n; avg=ag.data().avg||0; if(cn)myRank=cn.data().count+1;
+          this.agg=true;
+        }catch(e){if(this.agg===true)throw e; this.agg=false; console.warn('集計の問い合わせが使えないため、上位50件から計算します',e);}
       }
-      v={src:'fb',top,count:d.count||0,avg:d.count?d.sum/d.count:0,myRank,rankOver};
+      if(this.agg===false){
+        const qs=await withTimeout(F.getDocs(F.query(col,F.orderBy('time'),F.limit(50))),10000);
+        const all=qs.docs.map(x=>({id:x.id,...x.data()}));
+        top=all.slice(0,10); count=all.length; capped=count>=50;
+        avg=count?all.reduce((t,r)=>t+r.time,0)/count:0;
+        if(mine){
+          const n=all.filter(r=>r.time<mine.time).length;
+          if(n<50)myRank=n+1; else rankOver=true;
+        }
+      }
+      v={src:'fb',top,count,avg,capped,myRank,rankOver};
     }catch(e){
       console.warn('ランキングに接続できません',e);
       const all=[...SAMPLES[m].map(([name,time])=>({name,time,smp:true})),...localGet(m)].sort((x,y)=>x.time-y.time);
@@ -471,7 +479,6 @@ const rankStore={
       const {F,db}=await withTimeout(fbInit(),8000);
       const ref=await withTimeout(F.addDoc(F.collection(db,'scores_'+m),{name:rec.name,time:rec.time,score:rec.score}),10000);
       rec.id=ref.id;
-      try{await F.setDoc(F.doc(db,'stats',m),{count:F.increment(1),sum:F.increment(rec.time)},{merge:true});}catch(e){console.warn('集計の更新に失敗',e);}
       delete this.cache[m]; return true;
     }catch(e){
       console.warn('登録に失敗',e);
@@ -496,7 +503,7 @@ async function showRanking(m,mineRec){
   <p class="sub">${MODES[m].name}モード・卒業までの速さ</p>
   ${mineRec&&v.myRank?`<p class="best"><span class="newbest">あなたは ${v.myRank}位！</span></p>`:mineRec&&v.rankOver?`<p class="best">あなたは 51位以下</p>`:''}
   <table class="rank">${h||'<tr><td colspan="3">まだ記録がありません</td></tr>'}</table>
-  <p class="best">卒業した人 ${v.count}人／平均タイム ${v.count?fmtTime1(v.avg):'-'}</p>
+  <p class="best">卒業した人 ${v.count}人${v.capped?'以上':''}／平均タイム ${v.count?fmtTime1(v.avg):'-'}${v.capped?'（上位50人）':''}</p>
   <p class="hint">${v.src==='fb'?'みんなの記録（オンライン）':'オンラインにつながらないため、この端末だけの見本表示です'}</p>
   <div class="btns"><button class="btn" data-act="restart">${lastRun?'再スタート':'あそぶ'}</button><button class="btn sub" data-act="menu">モード選択</button></div>`);
 }
