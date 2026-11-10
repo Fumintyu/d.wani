@@ -441,21 +441,30 @@ const rankStore={
     try{
       const {F,db}=await withTimeout(fbInit(),8000);
       const col=F.collection(db,'scores_'+m);
-      const [qs,st,cn]=await withTimeout(Promise.all([
+      const [qs,st]=await withTimeout(Promise.all([
         F.getDocs(F.query(col,F.orderBy('time'),F.limit(10))),
         F.getDoc(F.doc(db,'stats',m)),
-        mine?F.getCountFromServer(F.query(col,F.where('time','<',mine.time))):Promise.resolve(null),
       ]),10000);
       const d=st.exists()?st.data():{count:0,sum:0};
-      v={src:'fb',top:qs.docs.map(x=>({id:x.id,...x.data()})),count:d.count||0,
-         avg:d.count?d.sum/d.count:0,myRank:cn?cn.data().count+1:null};
+      const top=qs.docs.map(x=>({id:x.id,...x.data()}));
+      let myRank=null, rankOver=false;
+      if(mine){
+        const i=top.findIndex(r=>r.id===mine.id);
+        if(i>=0)myRank=i+1;
+        else if(top.length<10)myRank=top.filter(r=>r.time<mine.time).length+1;
+        else try{ // 11位以下：自分より速い記録を50件まで数える
+          const q2=await withTimeout(F.getDocs(F.query(col,F.where('time','<',mine.time),F.orderBy('time'),F.limit(50))),10000);
+          if(q2.docs.length<50)myRank=q2.docs.length+1; else rankOver=true;
+        }catch(e){console.warn('順位の取得に失敗',e);}
+      }
+      v={src:'fb',top,count:d.count||0,avg:d.count?d.sum/d.count:0,myRank,rankOver};
     }catch(e){
       console.warn('ランキングに接続できません',e);
       const all=[...SAMPLES[m].map(([name,time])=>({name,time,smp:true})),...localGet(m)].sort((x,y)=>x.time-y.time);
       const i=mine?all.findIndex(r=>r.id===mine.id):-1;
       v={src:'local',top:all.slice(0,10),count:all.length,avg:all.reduce((t,r)=>t+r.time,0)/Math.max(1,all.length),myRank:i>=0?i+1:null};
     }
-    this.cache[m]={at:Date.now(),v}; return v;
+    if(v.src==='fb')this.cache[m]={at:Date.now(),v}; return v;
   },
   async add(m,rec){ // 登録。成功したら true
     try{
@@ -485,7 +494,7 @@ async function showRanking(m,mineRec){
   if(mineRec&&v.myRank>10)h+=`<tr><td colspan="3" style="text-align:center">…</td></tr>`+row(mineRec,v.myRank);
   show('ランキング',`${tabs}
   <p class="sub">${MODES[m].name}モード・卒業までの速さ</p>
-  ${mineRec&&v.myRank?`<p class="best"><span class="newbest">あなたは ${v.myRank}位！</span></p>`:''}
+  ${mineRec&&v.myRank?`<p class="best"><span class="newbest">あなたは ${v.myRank}位！</span></p>`:mineRec&&v.rankOver?`<p class="best">あなたは 51位以下</p>`:''}
   <table class="rank">${h||'<tr><td colspan="3">まだ記録がありません</td></tr>'}</table>
   <p class="best">卒業した人 ${v.count}人／平均タイム ${v.count?fmtTime1(v.avg):'-'}</p>
   <p class="hint">${v.src==='fb'?'みんなの記録（オンライン）':'オンラインにつながらないため、この端末だけの見本表示です'}</p>
