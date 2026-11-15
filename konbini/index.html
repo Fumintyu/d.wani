@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>深夜コンビニ診断</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=DotGothic16&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* 深夜の駐車場から見たコンビニ。暗い紺の中に蛍光灯の看板とレシートの白だけが光る。左寄せ1カラム。 */
+  --night:#0c1734;
+  --night-2:#16244d;
+  --sign:#ffe14d;      /* 看板の黄 */
+  --hot:#ff5a4e;       /* 値引きシールの赤 */
+  --paper:#f6f3ea;     /* レシート */
+  --ink:#1b1b1f;
+  --mist:#a9b4d6;      /* 補助テキスト */
+  --display:"Dela Gothic One","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+  --body:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+  --receipt:"DotGothic16","Zen Kaku Gothic New",monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--night);
+  background-image:radial-gradient(120% 60% at 50% -10%, #24376f 0%, transparent 60%);
+  background-repeat:no-repeat;
+  color:#fff;font-family:var(--body);font-weight:500;line-height:1.7;
+  min-height:100%;
+}
+main{max-width:560px;margin:0 auto;padding:28px 20px 64px}
+[hidden]{display:none !important}
+h1,h2{font-family:var(--display);font-weight:400;line-height:1.2;margin:0;text-wrap:balance}
+p{margin:0}
+.sign{
+  display:inline-block;background:var(--sign);color:var(--ink);
+  font-family:var(--display);font-size:13px;letter-spacing:.12em;
+  padding:4px 12px;border-radius:3px;
+  box-shadow:0 0 24px rgba(255,225,77,.45);
+}
+.hero{display:flex;flex-direction:column;gap:18px;padding-top:12px}
+.hero h1{font-size:clamp(40px,12vw,64px)}
+.hero h1 span{color:var(--sign)}
+.lead{color:var(--mist);font-size:16px;max-width:30em}
+.btn{
+  appearance:none;border:0;cursor:pointer;font-family:var(--display);
+  font-size:20px;color:var(--ink);background:var(--sign);
+  padding:16px 22px;border-radius:10px;width:100%;
+  box-shadow:0 6px 0 #b89a12;transition:transform .08s, box-shadow .08s;
+  text-decoration:none;display:block;text-align:center;
+}
+.btn:active{transform:translateY(4px);box-shadow:0 2px 0 #b89a12}
+.btn.ghost{background:transparent;color:#fff;box-shadow:inset 0 0 0 2px #3a4a80;font-size:16px;padding:13px 18px}
+.btn.x{background:#fff;box-shadow:0 6px 0 #9aa3bf}
+.btn.x:active{box-shadow:0 2px 0 #9aa3bf}
+:focus-visible{outline:3px solid var(--hot);outline-offset:3px}
+.shelf-title{font-family:var(--display);font-size:15px;color:var(--mist);margin-top:22px}
+.shelf{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;list-style:none;padding:0;margin:10px 0 0}
+.shelf li{
+  background:var(--night-2);border-radius:8px;padding:10px 4px 8px;text-align:center;
+  font-size:11px;line-height:1.35;color:var(--mist);
+  display:flex;flex-direction:column;gap:4px;align-items:center;border-bottom:3px solid #0a1230;
+}
+.shelf li b{font-size:26px;line-height:1;font-weight:400}
+/* quiz */
+.bar{height:10px;background:var(--night-2);border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--sign);width:0;transition:width .25s}
+.count{font-family:var(--receipt);color:var(--mist);font-size:15px;margin:10px 0 26px;display:flex;justify-content:space-between}
+.q{font-size:clamp(24px,7vw,32px);min-height:3.6em}
+.opts{display:flex;flex-direction:column;gap:14px;margin-top:8px}
+.opt{
+  appearance:none;border:0;cursor:pointer;text-align:left;width:100%;
+  background:var(--paper);color:var(--ink);font-family:var(--body);font-weight:700;font-size:17px;line-height:1.5;
+  padding:18px 18px 18px 54px;border-radius:10px;position:relative;
+  box-shadow:0 5px 0 #b9b3a0;transition:transform .08s, box-shadow .08s;
+}
+.opt:active{transform:translateY(3px);box-shadow:0 2px 0 #b9b3a0}
+.opt::before{
+  content:attr(data-k);position:absolute;left:14px;top:50%;transform:translateY(-50%);
+  width:28px;height:28px;border-radius:50%;background:var(--hot);color:#fff;
+  font-family:var(--display);font-size:14px;display:grid;place-items:center;
+}
+.back{margin-top:22px;background:none;border:0;color:var(--mist);font-family:var(--body);font-size:14px;cursor:pointer;padding:8px 0;text-decoration:underline}
+/* result */
+.result{display:flex;flex-direction:column;gap:18px}
+.result h2{font-size:22px;color:var(--sign)}
+.receipt-img{width:100%;height:auto;display:block;border-radius:6px}
+.hint{font-size:13px;color:var(--mist)}
+.detail{background:var(--night-2);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px}
+.detail dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:15px}
+.detail dt{font-family:var(--display);color:var(--sign);font-size:13px;padding-top:3px}
+.detail dd{margin:0}
+.actions{display:flex;flex-direction:column;gap:14px}
+.toast{font-size:13px;color:var(--sign);min-height:1.4em;text-align:center}
+@media (prefers-reduced-motion:reduce){*{transition:none !important}}
+</style>
+</head>
+<body>
+<main>
+
+<section id="start" class="hero">
+  <div><span class="sign">24H OPEN ／ 全16タイプ</span></div>
+  <h1>深夜<span>コンビニ</span>診断</h1>
+  <p class="lead">12問に答えると、あなたがコンビニの棚のどの商品なのかをレシートで発行します。所要1分。当たっていたら、そっとスクショしてください。</p>
+  <button class="btn" id="startBtn" type="button">入店する</button>
+  <p class="shelf-title">本日の棚(このどれかがあなた)</p>
+  <ul class="shelf" id="shelf"></ul>
+</section>
+
+<section id="quiz" hidden>
+  <div class="bar" aria-hidden="true"><i id="barFill"></i></div>
+  <div class="count"><span id="countNow">Q1</span><span>全12問</span></div>
+  <h2 class="q" id="qText" tabindex="-1"></h2>
+  <div class="opts">
+    <button class="opt" id="optA" data-k="A" type="button"></button>
+    <button class="opt" id="optB" data-k="B" type="button"></button>
+  </div>
+  <button class="back" id="backBtn" type="button">ひとつ前の質問に戻る</button>
+</section>
+
+<section id="result" class="result" hidden>
+  <h2 id="resHead" tabindex="-1">お会計が済みました</h2>
+  <img id="receiptImg" class="receipt-img" alt="">
+  <p class="hint">画像は長押し(PCは右クリック)で保存できます。スクショでもどうぞ。</p>
+  <div class="detail">
+    <p id="resDesc"></p>
+    <dl>
+      <dt>強み</dt><dd id="resStrong"></dd>
+      <dt>弱点</dt><dd id="resWeak"></dd>
+      <dt>相性◎</dt><dd id="resMatch"></dd>
+    </dl>
+  </div>
+  <div class="actions">
+    <a class="btn x" id="xLink" href="#" target="_blank" rel="noopener">結果をXにポストする</a>
+    <button class="btn ghost" id="copyBtn" type="button">結果の文章をコピーする</button>
+    <div class="toast" id="toast" role="status"></div>
+    <button class="btn ghost" id="retryBtn" type="button">もう一度入店する</button>
+  </div>
+</section>
+
+</main>
+<script>
+"use strict";
+const TAG = "#深夜コンビニ診断";
+
+// 4軸: [にぎやかA/ひっそりS] [計画P/衝動I] [人情H/クールC] [定番T/新しものN]
+const AXES = [
+  [["A","にぎやか成分"],["S","ひっそり成分"]],
+  [["P","計画成分"],["I","衝動買い成分"]],
+  [["H","人情成分"],["C","クール成分"]],
+  [["T","定番成分"],["N","新しもの成分"]],
+];
+
+const QUESTIONS = [
+  {ax:0,q:"深夜のコンビニで友だちとばったり。",a:"「え、何してんの!」と5分立ち話",b:"気づかれる前に雑誌コーナーへ退避"},
+  {ax:1,q:"コンビニに入るとき、あなたは。",a:"買うものはもう決まっている",b:"入ってから考える"},
+  {ax:2,q:"友だちから「ちょっと聞いてよ」。",a:"まず全力で共感する",b:"まず解決策を3つ出す"},
+  {ax:3,q:"新商品の棚の前で。",a:"結局いつものを買う",b:"「謎の味」と書いてあったら買う"},
+  {ax:0,q:"何も予定のない休日の理想は。",a:"誰かを誘って出かける",b:"誰にも会わず家で充電する"},
+  {ax:1,q:"旅行の前日。",a:"しおりレベルの予定表がある",b:"宿だけ取った。あとは現地で"},
+  {ax:2,q:"映画を観ているときのあなた。",a:"予告編の時点でもう泣ける",b:"伏線の回収を採点している"},
+  {ax:3,q:"カラオケの1曲目は。",a:"何年も歌っている十八番",b:"きのう覚えたばかりの曲"},
+  {ax:0,q:"グループLINEでのあなた。",a:"スタンプ連打で場を回す",b:"既読だけつけて見守る"},
+  {ax:1,q:"締め切りとの付き合い方。",a:"3日前に終わらせて寝る",b:"前夜に覚醒する"},
+  {ax:2,q:"レジの店員さんが新人っぽい。",a:"心の中で全力応援する",b:"隣のレジのほうが早いか計算する"},
+  {ax:3,q:"髪型や服の系統。",a:"何年も同じで落ち着いている",b:"定期的に別人になる"},
+];
+
+const TYPES = {
+  APHT:{e:"🥟",n:"レジ横の肉まん",c:"いるだけで場があったまる",d:"寒くなると全員があなたを思い出します。面倒見がよく、気づけば毎回幹事。みんなの分を配り終えてから、自分の分がないことに気づくタイプです。",s:"包容力と段取り",w:"頼まれると断れない"},
+  APHN:{e:"🍓",n:"期間限定いちごサンド",c:"「今だけ」を全力で楽しむ企画屋",d:"季節のイベントを誰より早く押さえ、周りを巻き込んでいきます。華があって段取りもいい。ただし熱が冷めるのも季節単位です。",s:"巻き込み力",w:"旬が過ぎると急に静か"},
+  APCT:{e:"☕",n:"淹れたてコーヒー",c:"毎朝きっちり同じクオリティ",d:"頼まれたことは期日より前に終わっています。感情より段取り。周りの人は、あなた抜きでは一日を始められません。",s:"安定した仕事ぶり",w:"雑談が議事録っぽい"},
+  APCN:{e:"⚡",n:"新作エナジードリンク",c:"効率と刺激を両取りする戦略家",d:"新しい道具は発売日に試し、翌週には周りに布教しています。目標があると止まりません。止まり方も知りません。",s:"行動の速さ",w:"休み方がわからない"},
+  AIHT:{e:"🍗",n:"レジ横のからあげ",c:"ついで買いされる天性の人気者",d:"予定になくても呼ばれます。ノリと情で生きていて、口ぐせは「とりあえず行く」。あなたが来ると会の満足度が上がります。",s:"誰とでも仲良くなる",w:"財布の中身を把握していない"},
+  AIHN:{e:"🎆",n:"夏の花火セット",c:"思いつきで夜を伝説にする",d:"「今から海行かない?」の発信源はだいたいあなたです。その場を一番楽しくする才能があります。片付けの時間にはなぜかいません。",s:"場を沸かせる瞬発力",w:"後片付け"},
+  AICT:{e:"🥤",n:"強炭酸水",c:"キレのある一言で目を覚まさせる",d:"思ったことはその場で言います。裏表ゼロ、甘さもゼロ。だからこそ、あなたの「いいね」は信用されています。",s:"率直さ",w:"一言多い"},
+  AICN:{e:"🎲",n:"レジ前のくじ引き",c:"何が出るかは本人にもわからない",d:"面白そうなら理屈はあとからついてきます。確率の話は好き。当たりの日のあなたは誰にも止められません。",s:"勝負強さ",w:"ハズレの日の落差"},
+  SPHT:{e:"🍙",n:"塩むすび",c:"派手さゼロ、信頼度100",d:"約束を守り、人の誕生日を覚えています。前には出ないけれど、静かに全員の味方です。結局みんなあなたのところに戻ってきます。",s:"誠実さ",w:"我慢していることを言わない"},
+  SPHN:{e:"🍲",n:"新作カップスープ",c:"静かに新しいぬくもりを研究中",d:"ひとりの時間に凝った趣味をじっくり育てています。心を開いた相手にだけ、その成果を惜しみなく見せます。",s:"探究心とやさしさ",w:"おすすめの圧が強い"},
+  SPCT:{e:"💧",n:"天然水",c:"無色透明、でも無いと全員困る",d:"淡々と正確。感情の波が少なく、誰の邪魔もしません。いなくなって初めて、存在の大きさに気づかれるタイプです。",s:"冷静さと正確さ",w:"「怒ってる?」と聞かれる"},
+  SPCN:{e:"🖊️",n:"なぜか売ってる高級ボールペン",c:"場違いなほどの専門性",d:"誰も知らない分野に異様に詳しい人です。計画的に沼へ潜り、きちんと成果を持って帰ってきます。",s:"一点集中の深さ",w:"説明が長い"},
+  SIHT:{e:"🍦",n:"深夜のアイス",c:"夜中にだけ本気を出す癒やし系",d:"深夜の長電話に最後まで付き合ってくれる人です。一緒にいると不思議と許された気持ちになります。朝は別人です。",s:"聞き上手",w:"午前中は溶けている"},
+  SIHN:{e:"🏷️",n:"半額シールの謎スイーツ",c:"出会えた人だけが知っている当たり",d:"気分屋で神出鬼没。万人受けはしませんが、ハマった人には深く刺さります。会えた日はちょっと得した気分になります。",s:"唯一無二の味",w:"返信が3日後"},
+  SICT:{e:"🌿",n:"ミントタブレット",c:"小さいのに後味が残る",d:"口数は少ないのに、一言がやけに的確です。いつも同じポケットにいる安心感。必要なときにだけ効きます。",s:"観察眼",w:"初対面で冷たいと思われる"},
+  SICN:{e:"🦑",n:"棚の奥の謎の珍味",c:"わかる人にだけわかればいい",d:"独自の世界観で生きています。流行は見ていません。一度その味を知った人は、もう他では満足できなくなります。",s:"ぶれない個性",w:"団体行動"},
+};
+
+function matchOf(code){ // 1文字目と3文字目を反転した相手
+  const f={A:"S",S:"A",H:"C",C:"H"};
+  return f[code[0]]+code[1]+f[code[2]]+code[3];
+}
+
+// 回答 → {code, lines:[[成分名, 個数]...]}
+function score(answers){
+  let code=""; const lines=[];
+  AXES.forEach((ax,i)=>{
+    let a=0,total=0;
+    QUESTIONS.forEach((q,k)=>{ if(q.ax===i){ total++; if(answers[k]==="a") a++; } });
+    const first = a*2>total;
+    code += first?ax[0][0]:ax[1][0];
+    lines.push([first?ax[0][1]:ax[1][1], first?a:total-a]);
+  });
+  return {code,lines};
+}
+
+/* ---------- レシート画像 ---------- */
+const W=1080;
+function wrap(ctx,text,maxW){
+  const out=[]; let line="";
+  for(const ch of Array.from(text)){
+    if(ctx.measureText(line+ch).width>maxW && line){ out.push(line); line=ch; } else line+=ch;
+  }
+  if(line) out.push(line);
+  return out;
+}
+function paint(ctx,H,type,code,lines){
+  const PX=70, L=PX+70, R=W-PX-70, CX=W/2;
+  const F=(px,fam)=>`${px}px ${fam}`;
+  const RC='"DotGothic16","Zen Kaku Gothic New",monospace';
+  const DP='"Dela Gothic One","Hiragino Kaku Gothic ProN",sans-serif';
+  ctx.fillStyle="#0c1734"; ctx.fillRect(0,0,W,H);
+  // 紙(下端ギザギザ)
+  ctx.fillStyle="#f6f3ea"; ctx.beginPath();
+  ctx.moveTo(PX,60); ctx.lineTo(W-PX,60); ctx.lineTo(W-PX,H-80);
+  const teeth=24, tw=(W-2*PX)/teeth;
+  for(let i=0;i<teeth;i++){ ctx.lineTo(W-PX-tw*(i+.5),H-56); ctx.lineTo(W-PX-tw*(i+1),H-80); }
+  ctx.closePath(); ctx.fill();
+
+  ctx.fillStyle="#1b1b1f"; ctx.textBaseline="top";
+  let y=120;
+  const center=(t,font,gap)=>{ ctx.font=font; ctx.textAlign="center"; ctx.fillText(t,CX,y); y+=gap; };
+  const row=(l,r,font,gap)=>{ ctx.font=font; ctx.textAlign="left"; ctx.fillText(l,L,y); ctx.textAlign="right"; ctx.fillText(r,R,y); y+=gap; };
+  const dash=()=>{ ctx.save(); ctx.strokeStyle="#1b1b1f"; ctx.lineWidth=3; ctx.setLineDash([14,10]); ctx.beginPath(); ctx.moveTo(L,y); ctx.lineTo(R,y); ctx.stroke(); ctx.restore(); y+=36; };
+
+  center("深夜コンビニ診断",F(64,DP),88);
+  center("あなた支店 レジ01",F(34,RC),50);
+  const d=new Date(), p=n=>String(n).padStart(2,"0");
+  center(`${d.getFullYear()}/${p(d.getMonth()+1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`,F(34,RC),64);
+  dash();
+  center("あなたの正体は",F(36,RC),64);
+  center(type.e,'230px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif',280);
+  ctx.font=F(76,DP);
+  for(const ln of wrap(ctx,type.n,R-L)) center(ln,F(76,DP),98);
+  y+=6;
+  ctx.font=F(38,RC);
+  for(const ln of wrap(ctx,type.c,R-L)) center(ln,F(38,RC),54);
+  y+=20; dash();
+  for(const [name,n] of lines) row(name,"×"+n,F(40,RC),60);
+  y+=6; dash();
+  const info=[["強み",type.s],["弱点",type.w],["相性◎",TYPES[matchOf(code)].n]];
+  for(const [k,v] of info){
+    ctx.font=F(36,RC); ctx.textAlign="left"; ctx.fillText(k,L,y);
+    const vs=wrap(ctx,v,R-L-170);
+    for(const ln of vs){ ctx.fillText(ln,L+170,y); y+=52; }
+    y+=6;
+  }
+  y+=4; dash();
+  row("合計","非売品",F(56,DP),92);
+  // バーコード(タイプコードから生成)
+  let seed=0; for(const ch of code) seed=(seed*31+ch.charCodeAt(0))>>>0;
+  const rnd=()=>{ seed=(seed*1664525+1013904223)>>>0; return seed/4294967296; };
+  let bx=CX-300; const bEnd=CX+300;
+  while(bx<bEnd){ const w=3+Math.floor(rnd()*4)*3; ctx.fillRect(bx,y,Math.min(w,bEnd-bx),120); bx+=w+3+Math.floor(rnd()*3)*3; }
+  y+=136;
+  center("TYPE-"+code,F(32,RC),58);
+  center(TAG,F(40,DP),64);
+  center("またのご来店をお待ちしております",F(30,RC),44);
+  return y+110;
+}
+async function renderReceipt(type,code,lines){
+  const sample="深夜コンビニ診断あなた支店レジ合計非売品"+type.n+type.c+type.s+type.w+TYPES[matchOf(code)].n+lines.map(l=>l[0]).join("")+"×0123456789/:TYPE-"+code+TAG+"またのご来店をお待ちしております";
+  try{
+    await Promise.race([
+      Promise.all([document.fonts.load('40px "DotGothic16"',sample),document.fonts.load('40px "Dela Gothic One"',sample)]),
+      new Promise(r=>setTimeout(r,2500))
+    ]);
+  }catch(e){}
+  const c=document.createElement("canvas"); c.width=W; c.height=2600;
+  const h=Math.ceil(paint(c.getContext("2d"),2600,type,code,lines));
+  c.height=h; paint(c.getContext("2d"),h,type,code,lines);
+  return c.toDataURL("image/png");
+}
+
+/* ---------- 画面 ---------- */
+const $=id=>document.getElementById(id);
+const views={start:$("start"),quiz:$("quiz"),result:$("result")};
+function show(name){ for(const k in views) views[k].hidden = k!==name; window.scrollTo(0,0); }
+
+$("shelf").innerHTML=Object.values(TYPES).map(t=>`<li><b>${t.e}</b>${t.n}</li>`).join("");
+
+let idx=0, answers=[];
+function drawQ(){
+  const q=QUESTIONS[idx];
+  $("qText").textContent=q.q;
+  $("optA").textContent=q.a; $("optB").textContent=q.b;
+  $("countNow").textContent="Q"+(idx+1);
+  $("barFill").style.width=(idx/QUESTIONS.length*100)+"%";
+  $("backBtn").hidden = idx===0;
+}
+function answer(v){
+  answers[idx]=v;
+  if(idx<QUESTIONS.length-1){ idx++; drawQ(); $("qText").focus({preventScroll:true}); }
+  else finish();
+}
+let shareText="";
+async function finish(){
+  const {code,lines}=score(answers); const t=TYPES[code];
+  shareText=`深夜コンビニ診断、わたしは【${t.e}${t.n}】でした。\n${t.c}。弱点は「${t.w}」。\n${TAG}\n${location.origin+location.pathname}`;
+  $("resDesc").textContent=t.d;
+  $("resStrong").textContent=t.s;
+  $("resWeak").textContent=t.w;
+  const m=TYPES[matchOf(code)];
+  $("resMatch").textContent=m.e+" "+m.n;
+  $("xLink").href="https://x.com/intent/post?text="+encodeURIComponent(shareText);
+  $("toast").textContent="";
+  const img=$("receiptImg");
+  img.alt=`レシート。あなたの正体は${t.n}。${t.c}。`;
+  img.removeAttribute("src");
+  show("result"); $("resHead").focus({preventScroll:true});
+  try{ img.src=await renderReceipt(t,code,lines); }catch(e){ img.hidden=true; }
+}
+$("startBtn").addEventListener("click",()=>{ idx=0; answers=[]; drawQ(); show("quiz"); });
+$("optA").addEventListener("click",()=>answer("a"));
+$("optB").addEventListener("click",()=>answer("b"));
+$("backBtn").addEventListener("click",()=>{ if(idx>0){ idx--; drawQ(); } });
+$("retryBtn").addEventListener("click",()=>{ $("receiptImg").hidden=false; show("start"); });
+$("copyBtn").addEventListener("click",async()=>{
+  try{ await navigator.clipboard.writeText(shareText); $("toast").textContent="コピーしました。"; }
+  catch(e){ $("toast").textContent="コピーできませんでした。Xボタンをお使いください。"; }
+});
+</script>
+</body>
+</html>
