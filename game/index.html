@@ -400,7 +400,7 @@ function showTitle(){
   <a class="home" href="../">← ワニ博士同好会のホームページへ</a>`);
 }
 const fmtTime=t=>{t=Math.floor(t);return Math.floor(t/60)+':'+String(t%60).padStart(2,'0');};
-const fmtTime1=t=>{const d=Math.floor(t*10);return Math.floor(d/600)+':'+String(Math.floor(d/10)%60).padStart(2,'0')+'.'+d%10;};
+const fmtTime1=t=>{const d=Math.floor(Math.round(t*1000)/10);return Math.floor(d/6000)+':'+String(Math.floor(d/100)%60).padStart(2,'0')+'.'+String(d%100).padStart(2,'0');};
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 // ---- ランキング（Firebase Firestore。モード別・卒業までの速さ） ----
 const FB_CONFIG={
@@ -532,7 +532,7 @@ async function submitName(){
 }
 function endGame(kind){ // 'grad' 卒業 / 'over' 留年で終了 / 'quit' 途中でやめた
   state='result'; held=[]; stickDir=null;
-  lastRun=kind==='grad'?{mode,time:Math.round(playTime*10)/10,score,sent:false}:null;
+  lastRun=kind==='grad'?{mode,time:Math.round(playTime*100)/100,score,sent:false}:null;
   let savedName=''; try{savedName=localStorage.getItem('tanihori-name')||'';}catch(e){}
   let best=0, isBest=false;
   try{best=+localStorage.getItem('tanihori-best-'+mode)||0; if(score>best){isBest=score>0;localStorage.setItem('tanihori-best-'+mode,String(score));}}catch(e){}
@@ -544,7 +544,7 @@ function endGame(kind){ // 'grad' 卒業 / 'over' 留年で終了 / 'quit' 途�
     ['レベル',lvText()],
     ['ひるませた回数',stuns+'回'],
     ...(mode!=='hard'?[['留年回数',ryunen+'回']]:[]),
-    ['プレイ時間',kind==='grad'?fmtTime1(playTime):fmtTime(playTime)],
+    ['プレイ時間',fmtTime1(playTime)],
   ];
   show(title,`<p class="sub">スコア</p><div class="score">${score}</div>
   <p class="best">${isBest?'<span class="newbest">ベスト更新！</span>':`${MODES[mode].name}のベスト ${Math.max(best,score)}`}</p>
@@ -647,6 +647,7 @@ function attack(){
     let blocked=false;
     for(let st=.3;st<dist-.2;st+=.2){
       const c=Math.round(p.x+dx/dist*st), r=Math.round(p.y+dy/dist*st);
+      if(Math.max(Math.abs(c-e.x),Math.abs(r-e.y))<.95)continue; // 不可自身がめり込んでいる石は無視
       if(inside(c,r)&&grid[r][c]===2){blocked=true;break;}
     }
     if(blocked)continue;
