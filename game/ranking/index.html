@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>単位ほりほり ランキング</title>
+<meta name="description" content="単位ほりほりのモード別ランキング。卒業までの速さを見られます。">
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+<style>
+  :root{--navy:#1c2048;--ink:#0f1024;--orange:#e8762d;--sand:#f6e7c8;--yellow:#ffd35a}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--navy);color:var(--sand);font-family:"DotGothic16",monospace}
+  main{max-width:520px;margin:0 auto;padding:calc(14px + env(safe-area-inset-top,0px)) 14px calc(24px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:12px;align-items:center;text-align:center}
+  h1{margin:0;font-size:24px;letter-spacing:.06em;text-shadow:3px 3px 0 var(--orange)}
+  .sub{margin:0;font-size:13px;opacity:.8}
+  .tabs{display:flex;gap:8px}
+  .tab{font-family:inherit;font-size:15px;padding:6px 14px;border:3px solid var(--ink);border-radius:8px;background:var(--ink);color:var(--sand);cursor:pointer}
+  .tab.sel{background:var(--yellow);color:var(--ink)}
+  table{width:100%;border-collapse:collapse;font-size:16px}
+  td{padding:7px 8px;border-bottom:1px solid rgba(246,231,200,.18)}
+  td:first-child{color:var(--yellow);width:2.6em;text-align:right}
+  td:nth-child(2){text-align:left;word-break:break-all}
+  td:last-child{text-align:right;color:var(--yellow);white-space:nowrap}
+  tr.me td{background:rgba(255,211,90,.22)}
+  tr.gap td{text-align:center;color:var(--sand);opacity:.6;padding:2px}
+  .sum{font-size:14px}
+  .msg{font-size:14px;min-height:1.4em}
+  .find{display:flex;gap:8px;width:100%;max-width:340px}
+  .find input{flex:1;min-width:0;font-family:inherit;font-size:16px;padding:7px 8px;border:3px solid var(--ink);border-radius:8px;background:#fff;color:var(--ink);text-align:center}
+  .btn{font-family:inherit;font-size:15px;padding:7px 14px;border:3px solid var(--ink);border-radius:8px;background:var(--orange);color:var(--sand);box-shadow:0 3px 0 var(--ink);cursor:pointer}
+  .btn.sub2{background:var(--sand);color:var(--ink)}
+  .btn:disabled{opacity:.6}
+  .links{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+  a.btn{text-decoration:none}
+  .home{font-size:12px;color:var(--sand);opacity:.8}
+</style>
+</head>
+<body>
+<main>
+  <h1>ランキング</h1>
+  <p class="sub">単位ほりほり・卒業までの速さ</p>
+  <div class="tabs" id="tabs"></div>
+  <div id="board"><p class="msg">読み込み中…</p></div>
+  <div class="find">
+    <input id="who" maxlength="10" placeholder="なまえで順位を調べる" autocomplete="off">
+    <button class="btn" id="go">調べる</button>
+  </div>
+  <p class="msg" id="mine"></p>
+  <div class="links">
+    <button class="btn sub2" id="reload">更新</button>
+    <a class="btn" href="../">あそぶ</a>
+  </div>
+  <a class="home" href="../../">← ワニ博士同好会のホームページへ</a>
+</main>
+<script type="module">
+const MODES={easy:'イージー',normal:'ノーマル',hard:'ハード'};
+const TOP=20;
+const FB_CONFIG={
+  apiKey:"AIzaSyD__1Ywar3bAviMxL0NvIn24689b211tJQ",
+  authDomain:"tani-horihori.firebaseapp.com",
+  projectId:"tani-horihori",
+  storageBucket:"tani-horihori.firebasestorage.app",
+  messagingSenderId:"785876833324",
+  appId:"1:785876833324:web:2b8decc07a35341bea6d89"
+};
+const FB_VER='10.14.1';
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=t=>{const d=Math.floor(Math.round(t*1000)/10);return Math.floor(d/6000)+':'+String(Math.floor(d/100)%60).padStart(2,'0')+'.'+String(d%100).padStart(2,'0');};
+const withTimeout=(p,ms)=>Promise.race([p,new Promise((_,rj)=>setTimeout(()=>rj(new Error('timeout')),ms))]);
+const cleanName=v=>{let n=(v||'').replace(/\s+/g,' ').trim().slice(0,10).replace(/\//g,'／');
+  if(/^\.+$/.test(n))n=n.replace(/\./g,'．'); if(/^__/.test(n))n='＿'+n.slice(1); return n;};
+
+let fbP=null;
+function fbInit(){
+  return fbP||(fbP=(async()=>{
+    const [A,F]=await Promise.all([
+      import(`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-app.js`),
+      import(`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-firestore.js`)]);
+    return {F,db:F.getFirestore(A.initializeApp(FB_CONFIG))};
+  })().catch(e=>{fbP=null;throw e;}));
+}
+
+let mode=(location.hash||'').slice(1); if(!MODES[mode])mode='normal';
+let loading=false, who='';
+try{who=localStorage.getItem('tanihori-name')||'';}catch(e){}
+$('who').value=who;
+
+function drawTabs(){
+  $('tabs').innerHTML=Object.keys(MODES).map(k=>`<button class="tab${k===mode?' sel':''}" data-m="${k}">${MODES[k]}</button>`).join('');
+}
+$('tabs').addEventListener('click',e=>{const b=e.target.closest('[data-m]');if(!b||b.dataset.m===mode)return;mode=b.dataset.m;history.replaceState(null,'','#'+mode);load();});
+$('reload').addEventListener('click',()=>load());
+$('go').addEventListener('click',()=>{who=cleanName($('who').value);$('who').value=who;load();});
+$('who').addEventListener('keydown',e=>{if(e.key==='Enter')$('go').click();});
+
+async function load(){
+  if(loading)return; loading=true;
+  drawTabs();
+  $('board').innerHTML='<p class="msg">読み込み中…</p>'; $('mine').textContent='';
+  $('reload').disabled=$('go').disabled=true;
+  try{
+    const {F,db}=await withTimeout(fbInit(),8000);
+    const col=F.collection(db,'scores_'+mode);
+    const [qs,ag]=await withTimeout(Promise.all([
+      F.getDocs(F.query(col,F.orderBy('time'),F.limit(TOP))),
+      F.getAggregateFromServer(F.query(col),{n:F.count(),avg:F.average('time')}).catch(()=>null),
+    ]),10000);
+    const top=qs.docs.map(x=>({id:x.id,...x.data()}));
+    let count=top.length, avg=top.length?top.reduce((t,r)=>t+r.time,0)/top.length:0, capped=false;
+    if(ag){count=ag.data().n;avg=ag.data().avg||0;}else if(top.length>=TOP)capped=true;
+    // 名前で調べる
+    let me=null, myRank=null, note='';
+    if(who){
+      const snap=await withTimeout(F.getDoc(F.doc(db,'scores_'+mode,who)),10000);
+      if(snap.exists()){
+        me={id:snap.id,...snap.data()};
+        const i=top.findIndex(r=>r.id===me.id);
+        if(i>=0)myRank=i+1;
+        else try{const c=await withTimeout(F.getCountFromServer(F.query(col,F.where('time','<',me.time))),10000);myRank=c.data().count+1;}catch(e){}
+        note=myRank?`${esc(me.name)} さんは ${myRank}位（${fmt(me.time)}）`:`${esc(me.name)} さんの記録は ${fmt(me.time)}`;
+      }else note=`${esc(who)} さんの記録は、${MODES[mode]}にまだありません`;
+    }
+    const row=(r,i)=>`<tr class="${me&&r.id===me.id?'me':''}"><td>${i}</td><td>${esc(r.name)}</td><td>${fmt(r.time)}</td></tr>`;
+    let h=top.map((r,i)=>row(r,i+1)).join('');
+    if(me&&myRank&&myRank>TOP)h+='<tr class="gap"><td colspan="3">…</td></tr>'+row(me,myRank);
+    $('board').innerHTML=(h?`<table>${h}</table>`:'<p class="msg">まだ記録がありません</p>')
+      +`<p class="sum">卒業した人 ${count}人${capped?'以上':''}／平均タイム ${count?fmt(avg):'-'}</p>`;
+    $('mine').textContent=''; $('mine').innerHTML=note;
+  }catch(e){
+    console.warn(e);
+    $('board').innerHTML='<p class="msg">ランキングに接続できませんでした。<br>通信状態を確認して、「更新」を押してください。</p>';
+  }finally{loading=false;$('reload').disabled=$('go').disabled=false;}
+}
+addEventListener('hashchange',()=>{const m=location.hash.slice(1);if(MODES[m]&&m!==mode){mode=m;load();}});
+load();
+</script>
+</body>
+</html>
